@@ -1,0 +1,18 @@
+{
+  "label" : [
+    {
+      "startTime" : "1786934523",
+      "label" : "Label 01 sdfdsf dfdsf sfsdf",
+      "cognitives" : [
+        {
+          "cognitive" : "Cognitive 01",
+          "startTime" : "1786934523",
+          "cognitiveId" : "1786934523",
+          "endTime" : "1786936439"
+        }
+      ],
+      "activityId" : "1786934523",
+      "endTime" : "1786936439"
+    }
+  ]
+}
