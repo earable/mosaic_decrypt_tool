@@ -5,12 +5,28 @@ The only Python entry point to run is `decrypt.py`.
 
 ## Requirements
 
-- Python 3.11 (macOS), matching the Python version used to build the `.so` module
+- Python **3.9** or **3.11** on macOS (arm64), matching a built `.so` module
 - The `cryptography` package
+
+| Python | Compiled module |
+| --- | --- |
+| 3.9 | `mosaic_decrypt.cpython-39-darwin.so` |
+| 3.11 | `mosaic_decrypt.cpython-311-darwin.so` |
 
 ## Create a virtual environment
 
-The `.so` module is bound to CPython 3.11, so the venv must also be created with Python 3.11.
+Create the venv with the same Python version you will run.
+
+Python 3.9:
+
+```bash
+python3.9 -m venv .venv
+source .venv/bin/activate
+python -m pip install --upgrade pip
+python -m pip install -r requirements.txt
+```
+
+Python 3.11:
 
 ```bash
 python3.11 -m venv .venv
@@ -19,7 +35,7 @@ python -m pip install --upgrade pip
 python -m pip install -r requirements.txt
 ```
 
-Check that Python 3.11 is active:
+Check the active Python version:
 
 ```bash
 python --version
@@ -42,15 +58,12 @@ data/MOSAIC-YYYYMMDD-HHMMSS-XXXX/
   <deviceId>_<timestamp>/
     SESSION/                      # look for sync_info here first
       sync_info.json.enc
-      # or <userId>_sync_info.json.enc
+      # or <xxxx>_sync_info.json.enc
     METRIC/                       # fallback if SESSION/ has no sync_info
       sync_info.json.enc
-      # or <userId>_sync_info.json.enc
+      # or <xxxx>_sync_info.json.enc
     .../*.lzma.enc
 ```
-
-`userId` is taken from `<userId>_sync_info.json.enc` when that filename is used.
-If the file is only `sync_info.json.enc`, `userId` (or `profileId`) is read from `session_information.json`.
 
 ## How to run
 
@@ -92,21 +105,24 @@ source .venv/bin/activate
 python src/decrypt_mosaic_folder.py data/MOSAIC-YYYYMMDD-HHMMSS-XXXX
 ```
 
-Rebuild the `.so` module after editing `src/mosaic_decrypt.py`:
+Rebuild the `.so` module after editing `src/mosaic_decrypt.py`. Use the same Python version as the target runtime:
 
 ```bash
 source .venv/bin/activate
-python -m pip install cython
-cythonize -3 -i src/mosaic_decrypt.py
-mv src/mosaic_decrypt*.so ./mosaic_decrypt.cpython-311-darwin.so
+python -m pip install cython setuptools
+python -c "from setuptools import setup; from Cython.Build import cythonize; import sys; sys.argv = ['setup', 'build_ext', '--inplace']; setup(ext_modules=cythonize('src/mosaic_decrypt.py', language_level=3))"
+mv src/mosaic_decrypt*.so ./
 rm -f src/mosaic_decrypt.c
 ```
+
+That produces `mosaic_decrypt.cpython-39-darwin.so` on Python 3.9, or `mosaic_decrypt.cpython-311-darwin.so` on Python 3.11.
 
 ## Files in this repo
 
 | File | Role |
 | --- | --- |
 | `decrypt.py` | Entry point: pass the MOSAIC session folder to decrypt |
-| `mosaic_decrypt*.so` | Compiled decryption module |
+| `mosaic_decrypt.cpython-39-darwin.so` | Compiled module for Python 3.9 |
+| `mosaic_decrypt.cpython-311-darwin.so` | Compiled module for Python 3.11 |
 | `src/` | Python source used for edits or rebuilds |
 | `requirements.txt` | Python dependencies |
