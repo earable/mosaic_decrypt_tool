@@ -1,7 +1,7 @@
 # Decrypt MOSAIC Data
 
 Decrypt a MOSAIC data folder (`.enc` / `.lzma.enc`) next to the original encrypted files.
-The only Python entry point to run is `decrypt.py`.
+The main entry point is `decrypt.py`. Use `join_chunks.py` to join chunk files on their own.
 
 ## Requirements
 
@@ -80,6 +80,26 @@ Example:
 python decrypt.py data/MOSAIC-20260817-024132-8A3A
 ```
 
+`decrypt.py` decrypts, decompresses, then joins chunk files automatically.
+
+## Join chunk files
+
+After decompress, files named `{timestamp}_{index}` (`_0000` … `_XXXX`) in the same folder are concatenated in index order into `{Folder}_joined`.
+
+Example: `EEG2/1786935419_0000` + `EEG2/1786936319_0001` + `EEG2/1786936453_0002` → `EEG2/EEG2_joined`.
+
+Run join on its own (no decrypt) if the chunks are already decompressed:
+
+```bash
+python join_chunks.py data/MOSAIC-YYYYMMDD-HHMMSS-XXXX
+```
+
+Or join a single sensor folder:
+
+```bash
+python join_chunks.py data/MOSAIC-20260817-024132-8A3A/E244CH43FX1U_1786934519000/EEG2
+```
+
 ## Output files
 
 Files are written next to the encrypted source:
@@ -122,6 +142,7 @@ That produces `mosaic_decrypt.cpython-39-darwin.so` on Python 3.9, or `mosaic_de
 | File | Role |
 | --- | --- |
 | `decrypt.py` | Entry point: pass the MOSAIC session folder to decrypt |
+| `join_chunks.py` | Join `{timestamp}_{index}` files into `{Folder}_joined` |
 | `mosaic_decrypt.cpython-39-darwin.so` | Compiled module for Python 3.9 |
 | `mosaic_decrypt.cpython-311-darwin.so` | Compiled module for Python 3.11 |
 | `src/` | Python source used for edits or rebuilds |

@@ -32,6 +32,8 @@ except ImportError as error:
         "(mosaic_decrypt.cpython-39-darwin.so or mosaic_decrypt.cpython-311-darwin.so)."
     ) from error
 
+from join_chunks import join_chunk_files
+
 
 def main() -> None:
     parser = argparse.ArgumentParser(description="Decrypt a MOSAIC data folder.")
@@ -40,6 +42,7 @@ def main() -> None:
 
     try:
         decrypt_folder(Path(args.folder).resolve())
+        join_chunk_files(Path(args.folder).resolve())
     except (FileNotFoundError, OSError, ValueError) as error:
         parser.error(str(error))
 
