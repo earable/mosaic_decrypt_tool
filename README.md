@@ -133,9 +133,18 @@ python -m pip install cython setuptools
 python -c "from setuptools import setup; from Cython.Build import cythonize; import sys; sys.argv = ['setup', 'build_ext', '--inplace']; setup(ext_modules=cythonize('src/mosaic_decrypt.py', language_level=3))"
 mv src/mosaic_decrypt*.so ./
 rm -f src/mosaic_decrypt.c
+codesign --force --sign - mosaic_decrypt.cpython-*-darwin.so
+xattr -d com.apple.quarantine mosaic_decrypt.cpython-*-darwin.so 2>/dev/null || true
 ```
 
 That produces `mosaic_decrypt.cpython-39-darwin.so` on Python 3.9, or `mosaic_decrypt.cpython-311-darwin.so` on Python 3.11.
+
+If macOS shows “Apple could not verify … is free of malware”, the `.so` was downloaded or cloned with a quarantine flag (for example via Sourcetree). `decrypt.py` clears that automatically on first run. To fix it by hand:
+
+```bash
+xattr -d com.apple.quarantine mosaic_decrypt.cpython-*-darwin.so
+codesign --force --sign - mosaic_decrypt.cpython-*-darwin.so
+```
 
 ## Files in this repo
 
