@@ -127,27 +127,6 @@ Original `.enc` files are kept. Intermediate `.lzma` files are also kept.
 
 The `Done: N/N .lzma.enc` line counts only sensor/data `.lzma.enc` files. `sync_info.json.enc` and `sync_info.json.lzma.enc` are decrypted earlier to obtain the key and are **not** included in that count.
 
-## Python source (for edits / rebuild)
-
-Decryption source lives in `src/`, separate from the `decrypt.py` entry point.
-
-Run directly from source:
-
-```bash
-source .venv/bin/activate
-python src/decrypt_mosaic_folder.py data/MOSAIC-YYYYMMDD-HHMMSS-XXXX
-```
-
-Rebuild the `.so` module after editing `src/mosaic_decrypt.py`. Use the same Python version as the target runtime:
-
-```bash
-source .venv/bin/activate
-python -m pip install cython setuptools
-python -c "from setuptools import setup; from Cython.Build import cythonize; import sys; sys.argv = ['setup', 'build_ext', '--inplace']; setup(ext_modules=cythonize('src/mosaic_decrypt.py', language_level=3))"
-mv src/mosaic_decrypt*.so ./
-rm -f src/mosaic_decrypt.c
-```
-
 That produces `mosaic_decrypt.cpython-39-darwin.so` on Python 3.9, or `mosaic_decrypt.cpython-311-darwin.so` on Python 3.11.
 
 On a new Mac, do **not** sign the `.so` by hand. The first `python decrypt.py ...` run clears the quarantine flag (from copy / git clone / Sourcetree) and ad-hoc-signs the module for that machine automatically.
@@ -162,5 +141,4 @@ If macOS still shows “Apple could not verify … is free of malware”, click 
 | `join_chunks.py` | Join `{timestamp}_{index}` files into `{Folder}_joined` |
 | `mosaic_decrypt.cpython-39-darwin.so` | Compiled module for Python 3.9 |
 | `mosaic_decrypt.cpython-311-darwin.so` | Compiled module for Python 3.11 |
-| `src/` | Python source used for edits or rebuilds |
 | `requirements.txt` | Python dependencies |
