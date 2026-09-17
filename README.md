@@ -125,8 +125,6 @@ Files are written next to the encrypted source:
 
 Original `.enc` files are kept. Intermediate `.lzma` files are also kept.
 
-The decrypted `syncUDID` is used only in memory and is not written to the JSON file.
-
 The `Done: N/N .lzma.enc` line counts only sensor/data `.lzma.enc` files. `sync_info.json.enc` and `sync_info.json.lzma.enc` are decrypted earlier to obtain the key and are **not** included in that count.
 
 ## Python source (for edits / rebuild)
