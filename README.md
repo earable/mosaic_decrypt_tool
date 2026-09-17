@@ -67,10 +67,6 @@ data/MOSAIC-YYYYMMDD-HHMMSS-XXXX/
     .../*.lzma.enc
 ```
 
-If `sync_info.json.enc` (or `<tempId>_sync_info.json.enc`) exists, use the current JSON flow. If only `sync_info.json.lzma.enc` exists, AES-decrypt it first and read `syncUDID`. When that key is empty, decompress the LZMA payload, then read `syncUDID`.
-
-`tempId` is taken from `<tempId>_sync_info.json.enc` or `<tempId>_sync_info.json.lzma.enc`. If the file is only `sync_info.json.enc` / `sync_info.json.lzma.enc`, `tempId` is read from `session_information.json`.
-
 ## How to run
 
 Activate the venv (if it is not already active), then pass the session folder:
