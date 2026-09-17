@@ -35,18 +35,31 @@ def _is_gatekeeper_block(error: BaseException) -> bool:
     return (
         "disallowed by system policy" in message
         or "code signature" in message
+        or "invalid signature" in message
         or "malware" in message
+        or "operation not permitted" in message
     )
 
 
-def _trust_local_extension(path: Path) -> None:
+def _clear_quarantine(path: Path) -> None:
     subprocess.run(
-        ["xattr", "-d", "com.apple.quarantine", str(path)],
+        ["xattr", "-dr", "com.apple.quarantine", str(path)],
         check=False,
         capture_output=True,
     )
+
+
+def _signature_is_valid(path: Path) -> bool:
+    verified = subprocess.run(
+        ["codesign", "--verify", str(path)],
+        capture_output=True,
+    )
+    return verified.returncode == 0
+
+
+def _adhoc_sign(path: Path) -> None:
     signed = subprocess.run(
-        ["codesign", "--force", "--sign", "-", str(path)],
+        ["codesign", "--force", "--sign", "-", "--timestamp=none", str(path)],
         capture_output=True,
         text=True,
     )
@@ -55,23 +68,58 @@ def _trust_local_extension(path: Path) -> None:
         raise RuntimeError(detail or "codesign failed")
 
 
+def _prepare_macos_native_modules() -> None:
+    """Clear quarantine and ad-hoc-sign .so files so a copied tree can load."""
+    if sys.platform != "darwin":
+        return
+
+    _clear_quarantine(ROOT)
+    so_files = sorted(ROOT.glob("mosaic_decrypt.cpython-*-darwin.so"))
+    current = _extension_path()
+    if current.is_file() and current not in so_files:
+        so_files.append(current)
+
+    for path in so_files:
+        _clear_quarantine(path)
+        if _signature_is_valid(path):
+            continue
+        try:
+            _adhoc_sign(path)
+        except RuntimeError:
+            if path == current:
+                raise
+
+
 def _load_decrypt_folder():
     try:
+        _prepare_macos_native_modules()
+    except RuntimeError as error:
+        so_path = _extension_path()
+        raise SystemExit(
+            "Could not ad-hoc-sign mosaic_decrypt for this Mac. "
+            f"Allow it in System Settings > Privacy & Security, or run: "
+            f"xattr -dr com.apple.quarantine '{ROOT}' && "
+            f"codesign --force --sign - '{so_path}'"
+        ) from error
+
+    try:
         from mosaic_decrypt import decrypt_folder as loaded
+
         return loaded
-    except ImportError as error:
+    except (ImportError, OSError) as error:
         so_path = _extension_path()
         if sys.platform == "darwin" and so_path.is_file() and _is_gatekeeper_block(error):
             try:
-                _trust_local_extension(so_path)
+                _clear_quarantine(ROOT)
+                _clear_quarantine(so_path)
+                _adhoc_sign(so_path)
                 from mosaic_decrypt import decrypt_folder as loaded
+
                 return loaded
             except Exception as fix_error:
                 raise SystemExit(
-                    "macOS blocked mosaic_decrypt because the .so is unsigned or "
-                    "quarantined. Allow it in System Settings > Privacy & Security, "
-                    f"or run: xattr -d com.apple.quarantine '{so_path}' && "
-                    f"codesign --force --sign - '{so_path}'"
+                    "macOS blocked mosaic_decrypt. If System Settings shows a "
+                    "malware warning, click Allow, then run decrypt.py again."
                 ) from fix_error
         raise SystemExit(
             "Could not import mosaic_decrypt. Install cryptography and use the "

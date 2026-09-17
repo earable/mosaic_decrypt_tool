@@ -58,12 +58,18 @@ data/MOSAIC-YYYYMMDD-HHMMSS-XXXX/
   <deviceId>_<timestamp>/
     SESSION/                      # look for sync_info here first
       sync_info.json.enc
-      # or <xxxx>_sync_info.json.enc
+      # or <tempId>_sync_info.json.enc
+      # or sync_info.json.lzma.enc / <tempId>_sync_info.json.lzma.enc
     METRIC/                       # fallback if SESSION/ has no sync_info
       sync_info.json.enc
-      # or <xxxx>_sync_info.json.enc
+      # or <tempId>_sync_info.json.enc
+      # or sync_info.json.lzma.enc / <tempId>_sync_info.json.lzma.enc
     .../*.lzma.enc
 ```
+
+If `sync_info.json.enc` (or `<tempId>_sync_info.json.enc`) exists, use the current JSON flow. If only `sync_info.json.lzma.enc` exists, AES-decrypt it first and read `syncUDID`. When that key is empty, decompress the LZMA payload, then read `syncUDID`.
+
+`tempId` is taken from `<tempId>_sync_info.json.enc` or `<tempId>_sync_info.json.lzma.enc`. If the file is only `sync_info.json.enc` / `sync_info.json.lzma.enc`, `tempId` is read from `session_information.json`.
 
 ## How to run
 
@@ -81,6 +87,12 @@ python decrypt.py data/MOSAIC-20260817-024132-8A3A
 ```
 
 `decrypt.py` decrypts, decompresses, then joins chunk files automatically.
+
+## Copying to another Mac
+
+No extra `codesign` / `xattr` step is required. On first run, `decrypt.py` removes the macOS quarantine flag from the tool folder and ad-hoc-signs `mosaic_decrypt*.so` for that machine.
+
+If System Settings still shows a malware warning, click **Allow**, then run the same command again.
 
 ## Join chunk files
 
@@ -107,12 +119,15 @@ Files are written next to the encrypted source:
 | Input | After decrypt | After decompress |
 | --- | --- | --- |
 | `sync_info.json.enc` | `sync_info.json` | — |
+| `sync_info.json.lzma.enc` | `sync_info.json.lzma` (only if the AES payload is LZMA) | `sync_info.json` |
 | `BETA_SCORE.json.lzma.enc` | `BETA_SCORE.json.lzma` | `BETA_SCORE.json` |
 | `1786935419_0000.lzma.enc` | `1786935419_0000.lzma` | `1786935419_0000` |
 
 Original `.enc` files are kept. Intermediate `.lzma` files are also kept.
 
 The decrypted `syncUDID` is used only in memory and is not written to the JSON file.
+
+The `Done: N/N .lzma.enc` line counts only sensor/data `.lzma.enc` files. `sync_info.json.enc` and `sync_info.json.lzma.enc` are decrypted earlier to obtain the key and are **not** included in that count.
 
 ## Python source (for edits / rebuild)
 
@@ -133,18 +148,13 @@ python -m pip install cython setuptools
 python -c "from setuptools import setup; from Cython.Build import cythonize; import sys; sys.argv = ['setup', 'build_ext', '--inplace']; setup(ext_modules=cythonize('src/mosaic_decrypt.py', language_level=3))"
 mv src/mosaic_decrypt*.so ./
 rm -f src/mosaic_decrypt.c
-codesign --force --sign - mosaic_decrypt.cpython-*-darwin.so
-xattr -d com.apple.quarantine mosaic_decrypt.cpython-*-darwin.so 2>/dev/null || true
 ```
 
 That produces `mosaic_decrypt.cpython-39-darwin.so` on Python 3.9, or `mosaic_decrypt.cpython-311-darwin.so` on Python 3.11.
 
-If macOS shows “Apple could not verify … is free of malware”, the `.so` was downloaded or cloned with a quarantine flag (for example via Sourcetree). `decrypt.py` clears that automatically on first run. To fix it by hand:
+On a new Mac, do **not** sign the `.so` by hand. The first `python decrypt.py ...` run clears the quarantine flag (from copy / git clone / Sourcetree) and ad-hoc-signs the module for that machine automatically.
 
-```bash
-xattr -d com.apple.quarantine mosaic_decrypt.cpython-*-darwin.so
-codesign --force --sign - mosaic_decrypt.cpython-*-darwin.so
-```
+If macOS still shows “Apple could not verify … is free of malware”, click **Allow** in System Settings > Privacy & Security, then run `decrypt.py` again.
 
 ## Files in this repo
 
